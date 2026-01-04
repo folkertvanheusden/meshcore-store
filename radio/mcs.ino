@@ -116,22 +116,18 @@ void setup_http_server() {
   });
 
   wsHandler.onConnect([](AsyncWebSocket *server, AsyncWebSocketClient *client) {
-      Serial.printf("Client %" PRIu32 " connected\n", client->id());
-      server->textAll("New client: " + String(client->id()));
+      Serial.printf("Client %" PRIu32 " connected\r\n", client->id());
       });
 
   wsHandler.onDisconnect([](AsyncWebSocket *server, uint32_t clientId) {
-    Serial.printf("Client %" PRIu32 " disconnected\n", clientId);
-    server->textAll("Client " + String(clientId) + " disconnected");
+    Serial.printf("Client %" PRIu32 " disconnected\r\n", clientId);
   });
 
   wsHandler.onError([](AsyncWebSocket *server, AsyncWebSocketClient *client, uint16_t errorCode, const char *reason, size_t len) {
-    Serial.printf("Client %" PRIu32 " error: %" PRIu16 ": %s\n", client->id(), errorCode, reason);
+    Serial.printf("Client %" PRIu32 " error: %" PRIu16 ": %s\r\n", client->id(), errorCode, reason);
   });
 
   wsHandler.onMessage([](AsyncWebSocket *server, AsyncWebSocketClient *client, const uint8_t *data, size_t len) {
-    Serial.printf("Client %" PRIu32 " data: %s\n", client->id(), (const char *)data);
-    server->textAll(data, len);
     std::unique_lock<std::mutex> lck(websocket_receive_lock);
     if (n_websocket_receive_entries < MAX_QUEUE_ENTRIES) {
       memcpy(websocket_receive_entries[n_websocket_receive_entries].buffer, data, len);
