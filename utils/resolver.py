@@ -1,6 +1,10 @@
+import sys
+sys.path.insert(1, '..')
+
 import config
-import dissect
+import hashlib
 import sqlite3
+import utils.dissect
 
 
 def _setup_db(db_file):
@@ -17,20 +21,24 @@ def _setup_db(db_file):
     cur.close()
     con.close()
 
-def _resolver(db_file, key, channel_name):
+def resolve_by_packet(db_file, packet):
     con = sqlite3.connect(db_file)
-
-    keys = []
     cur_get_keys = con.cursor()
-    cur_get_keys.execute('SELECT data FROM keys')
-    keys = [ row[0] for row in cur_get_keys.fetchall() ]
+    cur_get_keys.execute('SELECT data, name FROM keys')
+    keys = [ row for row in cur_get_keys.fetchall() ]
     cur_get_keys.close()
+    con.close()
+    d = utils.dissect.dissect(packet, keys)
+    return d.get_channel()
+
+def _resolve_by_channel(db_file, key, channel_name):
+    con = sqlite3.connect(db_file)
 
     cur_put = con.cursor()
     cur_get = con.cursor()
     cur_get.execute('SELECT data, id FROM packets WHERE channel IS NULL')
     for row in cur_get.fetchall():
-        d = dissect.dissect(row[0], [(key, channel_name)])
+        d = utils.dissect.dissect(row[0], [(key, channel_name)])
 
         channel = d.get_channel()
         if channel == None:
@@ -49,10 +57,15 @@ def add_key(db_file, key, name):
     cur_put = con.cursor()
     cur_put.execute('INSERT INTO keys(data, name) VALUES(?, ?)', (key, name))
     cur_put.close()
+    con.commit()
     con.close()
 
-    _resolver(db_file, key, name)
+    _resolve_by_channel(db_file, key, name)
+
+def add_channel(db_file, name):
+    add_key(db_file, hashlib.sha256(name.encode('utf8')).digest()[0:16], name)
 
 if __name__ == '__main__':
-    key = bytes([ 0x8b, 0x33, 0x87, 0xe9, 0xc5, 0xcd, 0xea, 0x6a, 0xc9, 0xe5, 0xed, 0xba, 0xa1, 0x15, 0xcd, 0x72 ])
-    add_key(config.db_file, key, 'Public')
+    #key = bytes([ 0x8b, 0x33, 0x87, 0xe9, 0xc5, 0xcd, 0xea, 0x6a, 0xc9, 0xe5, 0xed, 0xba, 0xa1, 0x15, 0xcd, 0x72 ])
+    #add_key(config.db_file, key, 'Public')
+    add_channel(config.db_file, sys.argv[1])

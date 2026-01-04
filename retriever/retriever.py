@@ -1,6 +1,10 @@
 #! /usr/bin/env python
 
+import sys
+sys.path.insert(1, '..')
+
 from websockets.sync.client import connect
+import utils.resolver
 import config
 import sqlite3
 
@@ -29,9 +33,14 @@ def worker(address, db_file):
                     if packet == None:
                         break
 
+                    channel = utils.resolver.resolve_by_packet(db_file, packet)
+
                     cur = con.cursor()
                     try:
-                        cur.execute('INSERT INTO packets(data) VALUES(?)', (packet,))
+                        if not channel is None:
+                            cur.execute('INSERT INTO packets(data, channel) VALUES(?, ?)', (packet, channel))
+                        else:
+                            cur.execute('INSERT INTO packets(data) VALUES(?)', (packet,))
                         con.commit()
                     except Exception as e:
                         print(f'Failed inserting packet: {e}')
