@@ -150,6 +150,7 @@ void setup_http_server() {
 
   if (!MDNS.begin(sys_id))
     Serial.println(F("Failed initializing MDNS"));
+  MDNS.addService("http", "tcp", 80);
 }
 
 void ws_thread(void *) {
