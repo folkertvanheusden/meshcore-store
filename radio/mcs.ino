@@ -70,6 +70,7 @@ char    sys_id[19] { 0 };
 AsyncWebServer              *http_server = nullptr;
 AsyncWebSocketMessageHandler wsHandler;
 AsyncWebSocket               ws("/ws", wsHandler.eventHandler());
+TaskHandle_t                 ws_handle;
 
 void failed_reboot(const char *const txt) {
   Serial.println(txt);
@@ -151,6 +152,29 @@ void setup_http_server() {
     Serial.println(F("Failed initializing MDNS"));
 }
 
+void ws_thread(void *) {
+  uint32_t last_clean = 0;
+
+  for(;;) {
+    uint32_t now = millis();
+    if (now - last_clean >= 500) {
+      ws.cleanupClients();
+      last_clean = now;
+    }
+
+    std::unique_lock<std::mutex> lck(websocket_transmit_lock);
+    websocket_transmit_cv.wait_for(lck, std::chrono::milliseconds(1));
+    for(int i=0; i<n_websocket_transmit_entries; i++)
+        ws.binaryAll(websocket_transmit_entries[i].buffer, websocket_transmit_entries[i].n);
+    int send_any = n_websocket_transmit_entries;
+    n_websocket_transmit_entries = 0;
+    lck.unlock();
+
+    if (send_any)
+      Serial.printf("Transmitted %d messages to websocket(s)\r\n", send_any);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
@@ -196,6 +220,8 @@ void setup() {
 
   setup_http_server();
 
+  xTaskCreatePinnedToCore(ws_thread, "WS", 16384, nullptr, 0, &ws_handle, 0);
+
   radio.setPacketReceivedAction(set_rf_recv_flag);
   start_rf_receive();
 
@@ -222,9 +248,6 @@ void rf_transmit(const uint8_t *const pl, const size_t len) {
   }
   set_builtin_led(LOW);
 }
-
-// ws.binaryAll <-- in de thread die de packets naar de websocket stuurt
-// TODO in a thread: ws.cleanupClients();
 
 void loop() {
   if (rf_received.exchange(false)) {
