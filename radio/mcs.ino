@@ -98,7 +98,7 @@ void setup_http_server() {
   http_server = new AsyncWebServer(HTTP_PORT);
 
   http_server->on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    AsyncWebServerResponse *response = request->beginResponse(200, "text/text", "LoRa websockets: " SELBOARD " / " AUTO_VERSION " / " __DATE__ " " __TIME__);
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/text", "MeshCore websockets: " SELBOARD " / " AUTO_VERSION " / " __DATE__ " " __TIME__);
     request->send(response);
   });
 
@@ -183,7 +183,7 @@ void setup() {
       Serial.print(':');
     Serial.print(mac[i], HEX);
   }
-  snprintf(sys_id, sizeof sys_id, "LoRaWS-%02x%02x%02x", mac[3], mac[4], mac[5]);
+  snprintf(sys_id, sizeof sys_id, "MCWS-%02x%02x%02x", mac[3], mac[4], mac[5]);
   Serial.print(F(", system ID: "));
   Serial.println(sys_id);
 
