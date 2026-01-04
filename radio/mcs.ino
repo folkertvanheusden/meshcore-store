@@ -150,6 +150,7 @@ void setup_http_server() {
 
   if (!MDNS.begin(sys_id))
     Serial.println(F("Failed initializing MDNS"));
+  MDNS.setInstanceName(sys_id);
   MDNS.addService("http", "tcp", 80);
 }
 
@@ -164,7 +165,7 @@ void ws_thread(void *) {
     }
 
     std::unique_lock<std::mutex> lck(websocket_transmit_lock);
-    websocket_transmit_cv.wait_for(lck, std::chrono::milliseconds(1));
+    websocket_transmit_cv.wait_for(lck, std::chrono::milliseconds(50));
     for(int i=0; i<n_websocket_transmit_entries; i++)
         ws.binaryAll(websocket_transmit_entries[i].buffer, websocket_transmit_entries[i].n);
     int send_any = n_websocket_transmit_entries;
