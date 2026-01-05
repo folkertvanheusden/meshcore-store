@@ -152,6 +152,7 @@ void setup_http_server() {
 
 void ws_thread(void *) {
   uint32_t last_clean = 0;
+  uint32_t last_status = 0;
 
   for(;;) {
     uint32_t now = millis();
@@ -170,6 +171,10 @@ void ws_thread(void *) {
 
     if (send_any)
       Serial.printf("[%u] Transmitted %d messages to websocket(s)\r\n", unsigned(millis()), send_any);
+    else if (now - last_status >= 5000) {
+      last_status = now;
+      Serial.printf("(%u) WS thread HB\r\n", unsigned(millis()));
+    }
   }
 }
 
@@ -248,6 +253,8 @@ void rf_transmit(const uint8_t *const pl, const size_t len) {
 }
 
 void loop() {
+  static uint32_t prev_ts = 0;
+
   if (rf_received.exchange(false)) {
     int num_bytes = radio.getPacketLength();
     if (num_bytes == 0)
@@ -286,4 +293,10 @@ void loop() {
 
   if (any_rf_tx)
     start_rf_receive();
+
+  uint32_t now = millis();
+  if (now - prev_ts >= 1500) {
+    Serial.printf("[%u]\r", now);
+    prev_ts = now;
+  }
 }
