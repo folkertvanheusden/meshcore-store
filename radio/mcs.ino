@@ -153,6 +153,7 @@ void setup_http_server() {
 void ws_thread(void *) {
   uint32_t last_clean = 0;
   uint32_t last_status = 0;
+  bool     full_notified = false;
 
   for(;;) {
     uint32_t now = millis();
@@ -161,13 +162,24 @@ void ws_thread(void *) {
       last_clean = now;
     }
 
-    std::unique_lock<std::mutex> lck(websocket_transmit_lock);
-    websocket_transmit_cv.wait_for(lck, std::chrono::milliseconds(50));
-    for(int i=0; i<n_websocket_transmit_entries; i++)
+    int send_any = 0;
+
+    if (ws.availableForWriteAll()) {
+      std::unique_lock<std::mutex> lck(websocket_transmit_lock);
+      websocket_transmit_cv.wait_for(lck, std::chrono::milliseconds(50));
+      for(int i=0; i<n_websocket_transmit_entries; i++)
         ws.binaryAll(websocket_transmit_entries[i].buffer, websocket_transmit_entries[i].n);
-    int send_any = n_websocket_transmit_entries;
-    n_websocket_transmit_entries = 0;
-    lck.unlock();
+      send_any = n_websocket_transmit_entries;
+      n_websocket_transmit_entries = 0;
+      lck.unlock();
+      full_notified = false;
+    }
+    else {
+      if (full_notified == false) {
+        full_notified = true;
+        Serial.printf("(%u) websockets queue full\r\n", unsigned(millis()));
+      }
+    }
 
     if (send_any)
       Serial.printf("[%u] Transmitted %d messages to websocket(s)\r\n", unsigned(millis()), send_any);
@@ -257,15 +269,15 @@ void loop() {
 
   if (rf_received.exchange(false)) {
     int num_bytes = radio.getPacketLength();
+    int state     = radio.readData(rf_buffer, num_bytes);
     if (num_bytes == 0)
-      Serial.println(F("RF ignoring empty msg"));
+      Serial.println(F("RF ignoring empty msg"));  // TODO toch lezen
     else if (num_bytes > sizeof(rf_buffer)) {
       Serial.print(F("RF truncated: "));
       Serial.print(num_bytes - sizeof(rf_buffer));
       Serial.println(F(" too short"));
     }
     else {
-      int state = radio.readData(rf_buffer, num_bytes);
       if (state == RADIOLIB_ERR_NONE) {
         // store in websocke transmit queue
         std::unique_lock<std::mutex> lck(websocket_transmit_lock);
