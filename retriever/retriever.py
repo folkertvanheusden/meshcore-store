@@ -7,6 +7,7 @@ from websockets.sync.client import connect
 import utils.resolver
 import config
 import sqlite3
+import time
 
 
 def setup_db(db_file):
@@ -27,13 +28,16 @@ def worker(address, db_file):
             con = sqlite3.connect(db_file)
 
             uri = f'ws://{address}/ws'
+            print(f'{time.ctime()} (re-)connecting to {uri}')
             with connect(uri) as websocket:
+                print(f'{time.ctime()} connected')
                 while True:
                     packet = websocket.recv()
                     if packet == None:
                         break
 
                     channel = utils.resolver.resolve_by_packet(db_file, packet)
+                    print(f'{time.ctime()} packet for {"-" if channel is None else channel}')
 
                     cur = con.cursor()
                     try:
@@ -46,12 +50,9 @@ def worker(address, db_file):
                         print(f'Failed inserting packet: {e}')
                     cur.close()
 
-        except TimeoutError:
-            pass
-
         except Exception as e:
-            print(f'worker: {e}')
-            raise e
+            print(f'{time.ctime()} worker: {e}')
+            time.sleep(0.1)  # prevent busy loop
 
     con.close()
 
