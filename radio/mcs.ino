@@ -169,7 +169,7 @@ void ws_thread(void *) {
     lck.unlock();
 
     if (send_any)
-      Serial.printf("Transmitted %d messages to websocket(s)\r\n", send_any);
+      Serial.printf("[%u] Transmitted %d messages to websocket(s)\r\n", unsigned(millis()), send_any);
   }
 }
 
