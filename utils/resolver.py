@@ -3,6 +3,7 @@ sys.path.insert(1, '..')
 
 import config
 import hashlib
+import multiprocessing
 import random
 import sqlite3
 import string
@@ -108,7 +109,7 @@ def gen_random_channel_name():
 
 
 # it is not realistic to use this implementation irl: too slow
-def find_channel_names(db_file):
+def find_channel_names_worker(db_file):
     con = sqlite3.connect(db_file)
 
     while True:
@@ -120,7 +121,7 @@ def find_channel_names(db_file):
             key = gen_channel_hash(channel_name)
             d = utils.dissect.dissect(row[0], [(key, channel_name)])
             payload = d.get_payload()
-            txt_type = (txt_type[4] >> 2) if (len(payload) if not payload is None else 0) > 5 else -1
+            txt_type = (payload[4] >> 2) if (len(payload) if not payload is None else 0) > 5 else -1
             if not payload is None and txt_type in (0x00, 0x01, 0x02):
                 print(f'Found channel {channel_name}', payload)
                 #add_key(db_file, key, channel_name)
@@ -134,9 +135,20 @@ def find_channel_names(db_file):
 
     con.close()
 
+def find_channel_names(db_file, process_count):
+    handles = []
+
+    for i in range(process_count):
+        h = multiprocessing.Process(target=find_channel_names_worker, args=(db_file,))
+        h.start()
+        handles.append(h)
+
+    for t in handles:
+        t.join()
+
 if __name__ == '__main__':
     #key = bytes([ 0x8b, 0x33, 0x87, 0xe9, 0xc5, 0xcd, 0xea, 0x6a, 0xc9, 0xe5, 0xed, 0xba, 0xa1, 0x15, 0xcd, 0x72 ])
     #add_key(config.db_file, key, 'Public')
-    add_channel(config.db_file, sys.argv[1])
+    #add_channel(config.db_file, sys.argv[1])
     # update_fields(config.db_file)
-    #find_channel_names(config.db_file)
+    find_channel_names(config.db_file, 12)
