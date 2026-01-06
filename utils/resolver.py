@@ -75,7 +75,7 @@ def update_fields(db_file):
     con = sqlite3.connect(db_file)
     cur_put = con.cursor()
     cur_get = con.cursor()
-    cur_get.execute('SELECT data, id FROM packets WHERE hop_count IS NULL OR payload_type IS NULL OR route_type IS NULL')
+    cur_get.execute('SELECT data, id FROM packets WHERE hop_count IS NULL OR payload_type IS NULL OR route_type IS NULL OR payload_text IS NULL OR ts_packet IS NULL')
     for row in cur_get.fetchall():
         d = utils.dissect.dissect(row[0], keys)
         hop_count = d.get_hop_count()
@@ -87,6 +87,12 @@ def update_fields(db_file):
         route_type = d.get_route_type()
         if not route_type is None:
             cur_put.execute('UPDATE packets SET route_type=? WHERE id=?', (route_type, row[1]))
+        ts_packet = d.get_timestamp()
+        if not ts_packet is None:
+            cur_put.execute('UPDATE packets SET ts_packet=? WHERE id=?', (ts_packet, row[1]))
+        payload_text = d.get_payload_text()
+        if not payload_text is None:
+            cur_put.execute('UPDATE packets SET payload_text=? WHERE id=?', (payload_text, row[1]))
     cur_get.close()
     cur_put.close()
     con.commit()
@@ -102,9 +108,9 @@ def add_channel(db_file, name):
 
 
 def gen_random_channel_name():
-    n = random.randint(1, 8)
+    n = random.randint(1, 9)
     # char_set = string.ascii_uppercase + string.ascii_lowercase + string.digits + '_-'
-    char_set = string.ascii_lowercase + '_-'
+    char_set = string.ascii_lowercase
     return '#' + ''.join(random.sample(char_set * n, n))
 
 
@@ -150,5 +156,5 @@ if __name__ == '__main__':
     #key = bytes([ 0x8b, 0x33, 0x87, 0xe9, 0xc5, 0xcd, 0xea, 0x6a, 0xc9, 0xe5, 0xed, 0xba, 0xa1, 0x15, 0xcd, 0x72 ])
     #add_key(config.db_file, key, 'Public')
     add_channel(config.db_file, sys.argv[1])
-    # update_fields(config.db_file)
-    #find_channel_names(config.db_file, 12)
+    #update_fields(config.db_file)
+    #find_channel_names(config.db_file, 2)

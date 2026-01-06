@@ -67,6 +67,51 @@ All data is stored in retriever/data.db (unless configured differently in config
 That's it for now!
 
 
+querying the database
+---------------------
+
+* packets per date + hour
+```sql
+select strftime('%Y-%m-%d %H', ts) as `when`, count(*) from packets group by `when`;
+```
+
+* packets per hour
+```sql
+select strftime('%H', ts) as `when`, count(*) from packets group by `when`;
+```
+
+* packets per channel
+```sql
+select channel, count(*) from packets group by channel;
+```
+
+* packets per hop-count amount
+```sql
+select hop_count, count(*) from packets group by hop_count;
+```
+
+* packets per payload type
+```sql
+select payload_type, count(*) from packets group by payload_type;
+```
+
+* average time per hop
+```sql
+select avg(unixepoch(ts) - ts_packet) from packets where not ts_packet is null and unixepoch(ts) - ts_packet >= 0 and unixepoch(ts) - ts_packet < 255*2;
+```
+The `>= 0` and `< 255*2` is because for some devices the internal clock returns invalid time.
+
+* how many packets were transmitted with a certain size
+```sql
+select length(data), count(*) from packets group by length(data);
+```
+
+* how much traffic per payload-type
+```sql
+select payload_type, sum(length(data)) from packets group by payload_type;
+```
+
+
 license
 -------
 
