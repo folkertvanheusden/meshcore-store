@@ -5,6 +5,11 @@ This software curently listens for LoRa/MeshCore packets and stores them (partia
 More functionality will be added later.
 
 
+requirements
+------------
+An ESP32 (XIAO with SX1262, Heltec V3, T-Beam v1.2, Lilygo t3 or T-Beam supreme) and the platformio software.
+
+
 installation
 ------------
 
