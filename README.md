@@ -106,6 +106,11 @@ The `>= 0` and `< 255*2` is because for some devices the internal clock returns 
 select length(data), count(*) from packets group by length(data);
 ```
 
+* how much traffic per payload-type
+```sql
+select payload_type, sum(length(data)) from packets group by payload_type;
+```
+
 
 license
 -------
