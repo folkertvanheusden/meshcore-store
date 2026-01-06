@@ -15,7 +15,7 @@ def setup_db(db_file):
     cur = con.cursor()
     try:
         cur.execute('PRAGMA journal_mode=wal')
-        cur.execute('CREATE TABLE packets(id INTEGER PRIMARY KEY AUTOINCREMENT, ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, data BLOB NOT NULL, channel TEXT)')
+        cur.execute('CREATE TABLE packets(id INTEGER PRIMARY KEY AUTOINCREMENT, ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, data BLOB NOT NULL, channel TEXT, hop_count INT)')
         con.commit()
     except:
         pass
@@ -36,15 +36,15 @@ def worker(address, db_file):
                     if packet == None:
                         break
 
-                    channel = utils.resolver.resolve_by_packet(db_file, packet)
-                    print(f'{time.ctime()} packet for {"-" if channel is None else channel}')
-
                     cur = con.cursor()
                     try:
-                        if not channel is None:
-                            cur.execute('INSERT INTO packets(data, channel) VALUES(?, ?)', (packet, channel))
-                        else:
-                            cur.execute('INSERT INTO packets(data) VALUES(?)', (packet,))
+                        d = utils.resolver.resolve_by_packet(db_file, packet)
+                        channel = d.get_channel() if d else None
+                        hop_count = d.get_hop_count()
+
+                        print(f'{time.ctime()} packet for {"-" if channel is None else channel}')
+
+                        cur.execute('INSERT INTO packets(data, channel, hop_count) VALUES(?, ?, ?)', (packet, channel, hop_count))
                         con.commit()
                     except Exception as e:
                         print(f'Failed inserting packet: {e}')

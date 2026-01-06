@@ -21,15 +21,18 @@ def _setup_db(db_file):
     cur.close()
     con.close()
 
-def resolve_by_packet(db_file, packet):
+def _get_keys(db_file):
     con = sqlite3.connect(db_file)
     cur_get_keys = con.cursor()
     cur_get_keys.execute('SELECT data, name FROM keys')
     keys = [ row for row in cur_get_keys.fetchall() ]
     cur_get_keys.close()
     con.close()
-    d = utils.dissect.dissect(packet, keys)
-    return d.get_channel()
+    return keys
+
+def resolve_by_packet(db_file, packet):
+    keys = _get_keys(db_file)
+    return utils.dissect.dissect(packet, keys)
 
 def _resolve_by_channel(db_file, key, channel_name):
     con = sqlite3.connect(db_file)
@@ -62,10 +65,30 @@ def add_key(db_file, key, name):
 
     _resolve_by_channel(db_file, key, name)
 
+# fill fields to have not been set earlier (db upgrade)
+def update_fields(db_file):
+    keys = _get_keys(db_file)
+
+    con = sqlite3.connect(db_file)
+    cur_put = con.cursor()
+    cur_get = con.cursor()
+    cur_get.execute('SELECT data, id FROM packets WHERE hop_count IS NULL')
+    for row in cur_get.fetchall():
+        d = utils.dissect.dissect(row[0], keys)
+        hop_count = d.get_hop_count()
+        if hop_count == None:
+            continue
+        cur_put.execute('UPDATE packets SET hop_count=? WHERE id=?', (hop_count, row[1]))
+    cur_get.close()
+    cur_put.close()
+    con.commit()
+    con.close()
+
 def add_channel(db_file, name):
     add_key(db_file, hashlib.sha256(name.encode('utf8')).digest()[0:16], name)
 
 if __name__ == '__main__':
     #key = bytes([ 0x8b, 0x33, 0x87, 0xe9, 0xc5, 0xcd, 0xea, 0x6a, 0xc9, 0xe5, 0xed, 0xba, 0xa1, 0x15, 0xcd, 0x72 ])
     #add_key(config.db_file, key, 'Public')
-    add_channel(config.db_file, sys.argv[1])
+   # add_channel(config.db_file, sys.argv[1])
+   update_fields(config.db_file)

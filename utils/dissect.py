@@ -20,7 +20,7 @@ class dissect:
 
     def __init__(self, packet, keys):
         self._channel = None
-        self._path = []
+        self._path = None
 
         try:
             header = packet[0]
@@ -55,7 +55,7 @@ class dissect:
                         break
 
         except Exception as e:
-            print(f'Packet is invalid: {e}')
+            print(f'Packet is invalid: {e} {e.__traceback__.tb_lineno}')
 
     def _try_key(self, data, key, digest_mac_in):
         signature = hmac.new(key, msg=data, digestmod=hashlib.sha256).digest()
@@ -68,6 +68,9 @@ class dissect:
 
     def get_channel(self):
         return self._channel
+
+    def get_hop_count(self):
+        return len(self._path) if self._path else None
 
     def get_path(self):
         return self._path
