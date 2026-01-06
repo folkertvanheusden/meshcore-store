@@ -3,7 +3,9 @@ sys.path.insert(1, '..')
 
 import config
 import hashlib
+import random
 import sqlite3
+import string
 import utils.dissect
 
 
@@ -89,11 +91,52 @@ def update_fields(db_file):
     con.commit()
     con.close()
 
+
+def gen_channel_hash(name):
+    return hashlib.sha256(name.encode('utf8')).digest()[0:16]
+
+
 def add_channel(db_file, name):
-    add_key(db_file, hashlib.sha256(name.encode('utf8')).digest()[0:16], name)
+    add_key(db_file, gen_channel_hash(name), name)
+
+
+def gen_random_channel_name():
+    n = random.randint(1, 8)
+    # char_set = string.ascii_uppercase + string.ascii_lowercase + string.digits + '_-'
+    char_set = string.ascii_lowercase + '_-'
+    return '#' + ''.join(random.sample(char_set * n, n))
+
+
+# it is not realistic to use this implementation irl: too slow
+def find_channel_names(db_file):
+    con = sqlite3.connect(db_file)
+
+    while True:
+        cur_get = con.cursor()
+        cur_get.execute('SELECT data, id FROM packets WHERE channel IS NULL AND (payload_type=5 OR payload_type=6)')
+        not_found_any = False
+        for row in cur_get.fetchall():
+            channel_name = gen_random_channel_name()
+            key = gen_channel_hash(channel_name)
+            d = utils.dissect.dissect(row[0], [(key, channel_name)])
+            payload = d.get_payload()
+            txt_type = (txt_type[4] >> 2) if (len(payload) if not payload is None else 0) > 5 else -1
+            if not payload is None and txt_type in (0x00, 0x01, 0x02):
+                print(f'Found channel {channel_name}', payload)
+                #add_key(db_file, key, channel_name)
+                #break
+            not_found_any = True
+
+        cur_get.close()
+
+        if not not_found_any:
+            break
+
+    con.close()
 
 if __name__ == '__main__':
     #key = bytes([ 0x8b, 0x33, 0x87, 0xe9, 0xc5, 0xcd, 0xea, 0x6a, 0xc9, 0xe5, 0xed, 0xba, 0xa1, 0x15, 0xcd, 0x72 ])
     #add_key(config.db_file, key, 'Public')
     add_channel(config.db_file, sys.argv[1])
     # update_fields(config.db_file)
+    #find_channel_names(config.db_file)

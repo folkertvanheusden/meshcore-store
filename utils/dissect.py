@@ -22,6 +22,8 @@ class dissect:
         self._channel = None
         self._path = None
         self._is_valid = False
+        self._err = None
+        self._payload = None
 
         try:
             header = packet[0]
@@ -58,7 +60,7 @@ class dissect:
             self._is_valid = True  # TODO more through checking (payload-type, etc)
 
         except Exception as e:
-            print(f'Packet is invalid: {e} {e.__traceback__.tb_lineno}')
+            self._err = f'Packet is invalid: {e} {e.__traceback__.tb_lineno}'
 
     def _try_key(self, data, key, digest_mac_in):
         signature = hmac.new(key, msg=data, digestmod=hashlib.sha256).digest()
@@ -68,6 +70,9 @@ class dissect:
     def _decrypt(self, data, key):
         cipher = AES.new(key, AES.MODE_ECB)
         return cipher.decrypt(data)[0:len(data)]
+
+    def get_error():
+        return self._err
 
     def is_valid(self):
         return self._is_valid
@@ -86,6 +91,9 @@ class dissect:
 
     def get_payload_type(self):
         return self._payload_type
+
+    def get_payload(self):
+        return self._payload
 
 if __name__ == '__main__':
     # key = bytes([ 0x8b, 0x33, 0x87, 0xe9, 0xc5, 0xcd, 0xea, 0x6a, 0xc9, 0xe5, 0xed, 0xba, 0xa1, 0x15, 0xcd, 0x72 ])
