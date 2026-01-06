@@ -127,8 +127,9 @@ def find_channel_names_worker(db_file):
             key = gen_channel_hash(channel_name)
             d = utils.dissect.dissect(row[0], [(key, channel_name)])
             payload = d.get_payload()
+            ts_packet = d.get_timestamp()
             txt_type = (payload[4] >> 2) if (len(payload) if not payload is None else 0) > 5 else -1
-            if not payload is None and txt_type in (0x00, 0x01, 0x02):
+            if not payload is None and txt_type in (0x00, 0x01, 0x02) and ts_packet >= 2020:
                 print(f'Found channel {channel_name}', payload)
                 #add_key(db_file, key, channel_name)
                 #break
