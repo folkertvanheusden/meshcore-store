@@ -80,19 +80,19 @@ select strftime('%Y-%m-%d %H', ts) as `when`, count(*) from packets group by `wh
 select strftime('%H', ts) as `when`, count(*) from packets group by `when`;
 ```
 
-* packets per channel
+* packet count per channel
 ```sql
 select channel, count(*) from packets group by channel;
 ```
 
-* packets per hop-count amount
+* packet count per hop-count amount
 ```sql
 select hop_count, count(*) from packets group by hop_count;
 ```
 
-* packets per payload type
+* packet count per payload type
 ```sql
-select payload_type, count(*) from packets group by payload_type;
+select descr, count(*) from packets, meta_payload_type where meta_payload_type.type=packets.payload_type group by payload_type;
 ```
 
 * average time per hop
@@ -108,8 +108,9 @@ select length(data), count(*) from packets group by length(data);
 
 * how much traffic per payload-type (2nd query is percentage of total)
 ```sql
-select payload_type, sum(length(data)) from packets group by payload_type;
-select payload_type, round(sum(length(data)) / CAST((SELECT SUM(LENGTH(data)) FROM packets) AS float) * 100, 2) from packets group by payload_type;
+select descr, sum(length(data)) from packets, meta_payload_type where meta_payload_type.type=packets.payload_type group by payload_type;
+
+select descr, round(sum(length(data)) / CAST((SELECT SUM(LENGTH(data)) FROM packets) AS float) * 100, 2) from packets, meta_payload_type where meta_payload_type.type=packets.payload_type group by payload_type;
 ```
 
 
