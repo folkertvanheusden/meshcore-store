@@ -24,6 +24,8 @@ class dissect:
         self._is_valid = False
         self._err = None
         self._payload = None
+        self._payload_text = None
+        self._timestamp = None
 
         try:
             header = packet[0]
@@ -55,6 +57,8 @@ class dissect:
                     if self._try_key(cipher_text, key[0], cipher_mac):
                         self._channel = key[1]
                         self._payload = self._decrypt(cipher_text, key[0])
+                        self._payload_text = self._payload[5:]
+                        self._timestamp = (self._payload[3] << 24) | (self._payload[2] << 16) | (self._payload[1] << 8) | self._payload[0]
                         break
 
             self._is_valid = True  # TODO more through checking (payload-type, etc)
@@ -94,6 +98,12 @@ class dissect:
 
     def get_payload(self):
         return self._payload
+
+    def get_payload_text(self):
+        return self._payload_text
+
+    def get_timestamp(self):
+        return self._timestamp
 
 if __name__ == '__main__':
     # key = bytes([ 0x8b, 0x33, 0x87, 0xe9, 0xc5, 0xcd, 0xea, 0x6a, 0xc9, 0xe5, 0xed, 0xba, 0xa1, 0x15, 0xcd, 0x72 ])
