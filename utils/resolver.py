@@ -149,6 +149,6 @@ def find_channel_names(db_file, process_count):
 if __name__ == '__main__':
     #key = bytes([ 0x8b, 0x33, 0x87, 0xe9, 0xc5, 0xcd, 0xea, 0x6a, 0xc9, 0xe5, 0xed, 0xba, 0xa1, 0x15, 0xcd, 0x72 ])
     #add_key(config.db_file, key, 'Public')
-    #add_channel(config.db_file, sys.argv[1])
+    add_channel(config.db_file, sys.argv[1])
     # update_fields(config.db_file)
-    find_channel_names(config.db_file, 12)
+    #find_channel_names(config.db_file, 12)
