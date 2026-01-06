@@ -21,15 +21,16 @@ class dissect:
     def __init__(self, packet, keys):
         self._channel = None
         self._path = None
+        self._is_valid = False
 
         try:
             header = packet[0]
-            route_type = header & 3
-            payload_type = (header >> 2) & 15
+            self._route_type = header & 3
+            self._payload_type = (header >> 2) & 15
             payload_version = header >> 6
 
             offset = 1
-            if route_type == 0 or route_type == 3:
+            if self._route_type == 0 or self._route_type == 3:
                 transport_codes1 = (packet[1] << 8) | packet[2]
                 transport_codes2 = (packet[3] << 8) | packet[4]
                 offset += 4
@@ -39,9 +40,9 @@ class dissect:
             self._path = [ node for node in packet[offset: offset + path_len] ]
             offset += path_len
 
-            if payload_type in (self.PAYLOAD_TYPE_ADVERT,):
+            if self._payload_type in (self.PAYLOAD_TYPE_ADVERT,):
                 self._channel = ''
-            elif payload_type in (self.PAYLOAD_TYPE_GRP_TXT, self.PAYLOAD_TYPE_GRP_DATA):
+            elif self._payload_type in (self.PAYLOAD_TYPE_GRP_TXT, self.PAYLOAD_TYPE_GRP_DATA):
                 channel_hash = packet[offset]
                 offset += 1
                 cipher_mac = (packet[offset] << 8) | packet[offset + 1]
@@ -53,6 +54,8 @@ class dissect:
                         self._channel = key[1]
                         self._payload = self._decrypt(cipher_text, key[0])
                         break
+
+            self._is_valid = True  # TODO more through checking (payload-type, etc)
 
         except Exception as e:
             print(f'Packet is invalid: {e} {e.__traceback__.tb_lineno}')
@@ -66,6 +69,9 @@ class dissect:
         cipher = AES.new(key, AES.MODE_ECB)
         return cipher.decrypt(data)[0:len(data)]
 
+    def is_valid(self):
+        return self._is_valid
+
     def get_channel(self):
         return self._channel
 
@@ -74,6 +80,12 @@ class dissect:
 
     def get_path(self):
         return self._path
+
+    def get_route_type(self):
+        return self._route_type
+
+    def get_payload_type(self):
+        return self._payload_type
 
 if __name__ == '__main__':
     # key = bytes([ 0x8b, 0x33, 0x87, 0xe9, 0xc5, 0xcd, 0xea, 0x6a, 0xc9, 0xe5, 0xed, 0xba, 0xa1, 0x15, 0xcd, 0x72 ])

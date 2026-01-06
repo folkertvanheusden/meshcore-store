@@ -72,13 +72,18 @@ def update_fields(db_file):
     con = sqlite3.connect(db_file)
     cur_put = con.cursor()
     cur_get = con.cursor()
-    cur_get.execute('SELECT data, id FROM packets WHERE hop_count IS NULL')
+    cur_get.execute('SELECT data, id FROM packets WHERE hop_count IS NULL OR payload_type IS NULL OR route_type IS NULL')
     for row in cur_get.fetchall():
         d = utils.dissect.dissect(row[0], keys)
         hop_count = d.get_hop_count()
-        if hop_count == None:
-            continue
-        cur_put.execute('UPDATE packets SET hop_count=? WHERE id=?', (hop_count, row[1]))
+        if not hop_count is None:
+            cur_put.execute('UPDATE packets SET hop_count=? WHERE id=?', (hop_count, row[1]))
+        payload_type = d.get_payload_type()
+        if not payload_type is None:
+            cur_put.execute('UPDATE packets SET payload_type=? WHERE id=?', (payload_type, row[1]))
+        route_type = d.get_route_type()
+        if not route_type is None:
+            cur_put.execute('UPDATE packets SET route_type=? WHERE id=?', (route_type, row[1]))
     cur_get.close()
     cur_put.close()
     con.commit()
