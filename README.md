@@ -110,7 +110,7 @@ select length(data), count(*) from packets group by length(data);
 ```sql
 select descr, sum(length(data)) from packets, meta_payload_type where meta_payload_type.type=packets.payload_type group by payload_type;
 
-select descr, round(sum(length(data)) / CAST((SELECT SUM(LENGTH(data)) FROM packets) AS float) * 100, 2) from packets, meta_payload_type where meta_payload_type.type=packets.payload_type group by payload_type;
+select descr, round(100.0 * sum(length(data)) / (select sum(length(data)) from packets), 2) from packets, meta_payload_type where meta_payload_type.type=packets.payload_type group by payload_type;
 ```
 
 
