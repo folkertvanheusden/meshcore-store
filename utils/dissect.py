@@ -58,6 +58,9 @@ class dissect:
                         self._channel = key[1]
                         self._payload = self._decrypt(cipher_text, key[0])
                         self._payload_text = self._payload[5:]
+                        end_marker = self._payload_text.find('\0')
+                        if end_marker != -1:
+                            self._payload_text = self._payload_text[0:end_marker - 1]
                         self._timestamp = (self._payload[3] << 24) | (self._payload[2] << 16) | (self._payload[1] << 8) | self._payload[0]
                         break
 

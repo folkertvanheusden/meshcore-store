@@ -48,7 +48,7 @@ def worker(address, db_file):
                         ts_packet = d.get_timestamp()
                         payload_text = d.get_payload_text()
 
-                        print(f'{time.ctime()} packet for {"-" if channel is None else channel}')
+                        print(f'{time.ctime()} packet for {"-" if channel is None else channel} ({payload_text})')
 
                         cur.execute('INSERT INTO packets(data, channel, hop_count, payload_type, route_type, ts_packet, payload_text) VALUES(?, ?, ?, ?, ?, ?, ?)', (packet, channel, hop_count, payload_type, route_type, ts_packet, payload_text))
                         con.commit()
