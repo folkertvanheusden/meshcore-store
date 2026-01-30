@@ -153,9 +153,10 @@ def find_channel_names_worker(db_file):
             print(row[1])
             for nr in range(0, 26 ** 9):
                 channel_name = ''
-                while nr > 0:
-                    channel_name += 'abcdefghijklmnopqrstuvwxyz'[nr % 26]
-                    nr //= 26
+                work_nr = nr
+                while work_nr > 0:
+                    channel_name += 'abcdefghijklmnopqrstuvwxyz'[work_nr % 26]
+                    work_nr //= 26
                 key = gen_channel_hash(channel_name)
                 d = utils.dissect.dissect(row[0], [(key, channel_name)])
                 payload = d.get_payload()
