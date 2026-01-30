@@ -142,9 +142,41 @@ def find_channel_names_worker(db_file):
 
     con.close()
 
+def find_channel_names_worker(db_file):
+    con = sqlite3.connect(db_file)
+
+    while True:
+        cur_get = con.cursor()
+        cur_get.execute('SELECT data, id FROM packets WHERE channel IS NULL AND (payload_type=5 OR payload_type=6) ORDER BY RANDOM()')
+        not_found_any = True
+        for row in cur_get.fetchall():
+            print(row[1])
+            for nr in range(0, 26 ** 9):
+                channel_name = ''
+                while nr > 0:
+                    channel_name += 'abcdefghijklmnopqrstuvwxyz'[nr % 26]
+                    nr //= 26
+                key = gen_channel_hash(channel_name)
+                d = utils.dissect.dissect(row[0], [(key, channel_name)])
+                payload = d.get_payload()
+                ts_packet = d.get_timestamp()
+                txt_type = (payload[4] >> 2) if (len(payload) if not payload is None else 0) > 5 else -1
+                if not payload is None and txt_type in (0x00, 0x01, 0x02) and not ts_packet is None and ts_packet >= 2024:
+                    print(f'Found channel {channel_name}', payload)
+                    add_key(db_file, key, channel_name)
+                    not_found_any = False
+                    break
+
+        cur_get.close()
+
+        if not not_found_any:
+            break
+
+    con.close()
+
+
 def find_channel_names(db_file, process_count):
     handles = []
-
     for i in range(process_count):
         h = multiprocessing.Process(target=find_channel_names_worker, args=(db_file,))
         h.start()
@@ -153,9 +185,10 @@ def find_channel_names(db_file, process_count):
     for t in handles:
         t.join()
 
+
 if __name__ == '__main__':
     #key = bytes([ 0x8b, 0x33, 0x87, 0xe9, 0xc5, 0xcd, 0xea, 0x6a, 0xc9, 0xe5, 0xed, 0xba, 0xa1, 0x15, 0xcd, 0x72 ])
     #add_key(config.db_file, key, 'Public')
-    add_channel(config.db_file, sys.argv[1])
+    #add_channel(config.db_file, sys.argv[1])
     #update_fields(config.db_file)
-    #find_channel_names(config.db_file, 2)
+    find_channel_names(config.db_file, int(sys.argv[1]))
