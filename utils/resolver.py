@@ -152,7 +152,7 @@ def find_channel_names_worker(db_file):
         for row in cur_get.fetchall():
             print(row[1])
             for nr in range(0, 26 ** 9):
-                channel_name = ''
+                channel_name = '#'
                 work_nr = nr
                 while work_nr > 0:
                     channel_name += 'abcdefghijklmnopqrstuvwxyz'[work_nr % 26]
