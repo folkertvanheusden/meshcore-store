@@ -148,13 +148,14 @@ def find_channel_names_worker(db_file):
 
     p_print = start = time.time()
     n_done = 0
+    found = 0
     while True:
         cur_get = con.cursor()
         cur_get.execute('SELECT data, id FROM packets WHERE channel IS NULL AND (payload_type=5 OR payload_type=6) ORDER BY RANDOM()')
         not_found_any = True
         for row in cur_get.fetchall():
             print(row[1])
-            for nr in range(26 ** 9):
+            for nr in range(26 ** 6):
                 channel_name = '#'
                 work_nr = nr
                 while work_nr > 0:
@@ -170,11 +171,12 @@ def find_channel_names_worker(db_file):
                     print(f'Found channel {channel_name}', payload)
                     add_key(db_file, key, channel_name)
                     not_found_any = False
+                    found += 1
                     break
                 now = time.time()
                 if now - p_print >= 1:
                     p_print = now
-                    print(n_done / (now - start), nr, channel_name)
+                    print(n_done / (now - start), nr, channel_name, found)
 
         cur_get.close()
 
