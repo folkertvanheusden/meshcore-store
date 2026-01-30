@@ -7,6 +7,7 @@ import multiprocessing
 import random
 import sqlite3
 import string
+import time
 import utils.dissect
 
 
@@ -145,6 +146,8 @@ def find_channel_names_worker(db_file):
 def find_channel_names_worker(db_file):
     con = sqlite3.connect(db_file)
 
+    p_print = start = time.time()
+    n_done = 0
     while True:
         cur_get = con.cursor()
         cur_get.execute('SELECT data, id FROM packets WHERE channel IS NULL AND (payload_type=5 OR payload_type=6) ORDER BY RANDOM()')
@@ -162,11 +165,16 @@ def find_channel_names_worker(db_file):
                 payload = d.get_payload()
                 ts_packet = d.get_timestamp()
                 txt_type = (payload[4] >> 2) if (len(payload) if not payload is None else 0) > 5 else -1
+                n_done += 1
                 if not payload is None and txt_type in (0x00, 0x01, 0x02) and not ts_packet is None and ts_packet >= 2024:
                     print(f'Found channel {channel_name}', payload)
                     add_key(db_file, key, channel_name)
                     not_found_any = False
                     break
+                now = time.time()
+                if now - p_print >= 1:
+                    p_print = now
+                    print(n_done / (now - start), nr, channel_name)
 
         cur_get.close()
 
