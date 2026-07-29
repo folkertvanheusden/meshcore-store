@@ -4,10 +4,12 @@ import sys
 sys.path.insert(1, '..')
 
 from websockets.sync.client import connect
-import utils.resolver
 import config
+import json
+import paho.mqtt.publish as publish
 import sqlite3
 import time
+import utils.resolver
 
 
 def setup_db(db_file):
@@ -15,7 +17,7 @@ def setup_db(db_file):
     cur = con.cursor()
     try:
         cur.execute('PRAGMA journal_mode=wal')
-        cur.execute('CREATE TABLE packets(id INTEGER PRIMARY KEY AUTOINCREMENT, ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, data BLOB NOT NULL, channel TEXT, hop_count INT, route_type INT, payload_type INT, ts_packet INT, payload_text TEXT)')
+        cur.execute('CREATE TABLE packets(id INTEGER PRIMARY KEY AUTOINCREMENT, ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, data BLOB NOT NULL, channel TEXT, hop_count INT, route_type INT, payload_type INT, ts_packet INT, payload_text TEXT) STRICT')
         cur.execute('CREATE TABLE meta_payload_type(type INTEGER NOT NULL, descr TEXT NOT NULL, PRIMARY KEY(type))')
         cur.execute('INSERT INTO meta_payload_type(type, descr) VALUES (0, "REQ"), (1, "RESPONSE"), (2, "TXT MSG"), (3, "ACK"), (4, "ADVERT"), (5, "GRP_TXT"), (6, "GRP_DATA"), (7, "ANON_REQ"), (8, "PATH"), (9, "TRACE"), (10, "MULTIPART"), (11, "CONTROL"), (12, "reserved 0x0c"), (13, "reserved 0x0d"), (14, "reserved 0x0e"), (15, "RAW_CUSTOM")')
         con.commit()
@@ -28,6 +30,9 @@ def worker(address, db_file):
     while True:
         try:
             con = sqlite3.connect(db_file)
+            cur = con.cursor()
+            cur.execute('pragma strict=true')
+            cur.close()
 
             uri = f'ws://{address}/ws'
             print(f'{time.ctime()} (re-)connecting to {uri}')
@@ -47,11 +52,17 @@ def worker(address, db_file):
                         route_type = d.get_route_type()
                         ts_packet = d.get_timestamp()
                         payload_text = d.get_payload_text()
+                        if payload_text:
+                            payload_text = payload_text.decode('utf-8')
 
-                        print(f'{time.ctime()} packet for {"-" if channel is None else channel} ({payload_text})')
+                        print(f'{time.ctime()} packet for {"-" if channel is None else channel} ({payload_text}) {packet[0] >> 6}')
 
                         cur.execute('INSERT INTO packets(data, channel, hop_count, payload_type, route_type, ts_packet, payload_text) VALUES(?, ?, ?, ?, ?, ?, ?)', (packet, channel, hop_count, payload_type, route_type, ts_packet, payload_text))
                         con.commit()
+
+                        pl = json.dumps({ 'channel': channel, 'hop_count': hop_count, 'payload_type': payload_type, 'route_type': route_type, 'ts_packet': ts_packet, 'payload_text': payload_text })
+                        publish.single('meshcore/data', pl, hostname='192.168.64.1')
+
                     except Exception as e:
                         print(f'Failed inserting packet: {e}')
                     cur.close()
