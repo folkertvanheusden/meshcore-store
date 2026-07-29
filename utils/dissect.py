@@ -20,6 +20,7 @@ class dissect:
 
     def __init__(self, packet, keys):
         self._channel = None
+        self._channel_hash = None
         self._path = None
         self._is_valid = False
         self._err = None
@@ -39,15 +40,22 @@ class dissect:
                 transport_codes2 = (packet[3] << 8) | packet[4]
                 offset += 4
 
-            path_len = packet[offset]
+            path_len = packet[offset] & 63
+            multiplier = (packet[offset] >> 6) + 1
             offset += 1
-            self._path = [ node for node in packet[offset: offset + path_len] ]
-            offset += path_len
+            self._path = []
+            for i in range(path_len):
+                hop = 0
+                for e in range(multiplier):
+                    hop <<= 8
+                    hop += packet[offset]
+                    offset += 1
+                self._path.append(hop)
 
             if self._payload_type in (self.PAYLOAD_TYPE_ADVERT,):
                 self._channel = ''
             elif self._payload_type in (self.PAYLOAD_TYPE_GRP_TXT, self.PAYLOAD_TYPE_GRP_DATA):
-                channel_hash = packet[offset]
+                self._channel_hash = packet[offset]
                 offset += 1
                 cipher_mac = (packet[offset] << 8) | packet[offset + 1]
                 offset += 2
@@ -58,9 +66,9 @@ class dissect:
                         self._channel = key[1]
                         self._payload = self._decrypt(cipher_text, key[0])
                         self._payload_text = self._payload[5:]
-                        end_marker = self._payload_text.find('\0')
+                        end_marker = self._payload_text.find(b'\0')
                         if end_marker != -1:
-                            self._payload_text = self._payload_text[0:end_marker - 1]
+                            self._payload_text = self._payload_text[0:end_marker]
                         self._timestamp = (self._payload[3] << 24) | (self._payload[2] << 16) | (self._payload[1] << 8) | self._payload[0]
                         break
 
@@ -68,6 +76,8 @@ class dissect:
 
         except Exception as e:
             self._err = f'Packet is invalid: {e} {e.__traceback__.tb_lineno}'
+            print(self._err)
+            raise e
 
     def _try_key(self, data, key, digest_mac_in):
         signature = hmac.new(key, msg=data, digestmod=hashlib.sha256).digest()
@@ -107,6 +117,9 @@ class dissect:
 
     def get_timestamp(self):
         return self._timestamp
+
+    def get_channel_hash(self):
+        return self._channel_hash
 
 if __name__ == '__main__':
     # key = bytes([ 0x8b, 0x33, 0x87, 0xe9, 0xc5, 0xcd, 0xea, 0x6a, 0xc9, 0xe5, 0xed, 0xba, 0xa1, 0x15, 0xcd, 0x72 ])
